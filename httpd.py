@@ -2,6 +2,7 @@
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
+import socketserver
 
 # TEST WITH:
 # -H "Content-Type: application/json"
@@ -68,12 +69,12 @@ class restHandler(BaseHTTPRequestHandler):
         Not yet implemented.
         """
         try:
-            response = self.path
+            content = self.path
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
-            self.send_header('Content-length', str(len(response)))
+            self.send_header('Content-length', str(len(content)))
             self.end_headers()
-            self.wfile.write(bytes(response, "utf-8"))
+            self.wfile.write(bytes(content, "utf-8"))
         except:
             self.send_error(500)
         return
@@ -89,11 +90,27 @@ class restHandler(BaseHTTPRequestHandler):
     def log(self, content, timestamp, level, facility):
         """
         Log messages to storage.
-        Permanent record will probably be day based log files named as: YYYYMMDD-level-facility.
+        content contains the full url-encoded string defining all content for the message.
+        timestamp, level, facility are all decoded out of the content string.
+        The permanent record will probably be day based log files named as: YYYYMMDD-level-facility.
         Potentially could log messages individually named as: YYYYMMDD-HHMMSS.uuuuuu-level-facility.
         May drop messages to individual files for reliability and speed and run a worker to clean them up continually to day based log file.
         Log probably kept in url encoded format prefixed with unique reference / index for sorting and filtering.
         """
+        print('-'.join((timestamp, level, facility)) + ': ' + content)
+
+        # E.g:
+        # determine filename prefix and day string
+        # if day directory not present create
+        # if prefix filename not present create
+        # log to prefix filename
+
+        # ???
+        # loggers = dict()
+        # if not level in loggers: loggers[level] = dict()
+        # if not facility in loggers[level]: loggers[level][facility] = TimedRotatingFileHandler()
+        # Subclass BaseRotatingHandler or TimedRotatingFileHandler in loggers where the default name is level-facility.
+        # On daily rotation move to YYMMDD-level-facility.
         return
 
 if __name__ == '__main__':
@@ -103,6 +120,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt: pass
     httpd.server_close()
 
+    ## HTTPS recipe:
     ## https://stackoverflow.com/questions/20470831/https-server-with-python
     ## Using HTTP for now, implementing HTTPS is a simple improvement.
     ## from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -110,3 +128,16 @@ if __name__ == '__main__':
     ## httpd = HTTPServer(('localhost', 4443), SimpleHTTPRequestHandler)
     ## httpd.socket = ssl.wrap_socket (httpd.socket, keyfile="path/to/key.pem", certfile='path/to/cert.pem', server_side=True)
     ## httpd.serve_forever()
+
+    ## Forking recipe:
+    ## class ForkingHTTPServer(socketserver.ForkingMixIn, HTTPServer):
+    ##     def finish_request(self, request, client_address):
+    ##         request.settimeout(30)
+    ##         HTTPServer.finish_request(self, request, client_address)
+    ## 
+    ## if __name__ == '__main__':
+    ##     httpd = ForkingHTTPServer(('', 8080), restHandler)
+    ##     print(str(httpd))
+    ##     try: httpd.serve_forever()
+    ##     except KeyboardInterrupt: pass
+    ##     httpd.socket.close()
