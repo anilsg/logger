@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs
 
 # TEST WITH:
 # -H "Content-Type: application/json"
@@ -13,17 +14,7 @@ class restHandler(BaseHTTPRequestHandler):
     Libraries possibly send with: Requests
     Libraries possibly send with: https://docs.python.org/3/library/logging.handlers.html#logging.handlers.HTTPHandler
     Libraries may save to local cache with a separately running client to send the messages to the server.
-    This setup would make logging calls independent of network connection and possibly improve performance and protect against surges.
-    However, it may just not be required.
-
-    POST to /api/v1/messages providing these parameters:
-    facility:   <string> (name containing usual identifier syntax: alphanumeric, underscore, but no spaces).
-    level:      <number> (accept integer indicating these levels: emerg 70 alert 60 crit 50 error 40 warn 30 notice 25 info 20 debug 10).
-    timestamp:  expects UTC timestamp from client although this may introduce slight skew so could just generate on server.
-    message:    <string> (description of error, needs to be static for each error, no variation from embedded variables).
-    name/value: additional arbitrary name/values allowed and will all be logged (clients need to co-ordinate the same names for analysis).
-    token:      potential authentication token (probably won't use).
-    hmac:       potential HMAC signature.
+    This setup would make logging calls independent of network connection and possibly improve performance and protect against surges, but may be unnecessary.
     """
 
     # Generating timestamps must be true UTC:
@@ -33,8 +24,16 @@ class restHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """
-        Accept and log messages.
-        Always expects single individual message.
+        Accept and log messages. Always expects single individual message.
+        POST to /api/v1/messages providing these parameters:
+        timestamp:  expects UTC timestamp from client although this may introduce slight skew so could just generate on server.
+        level:      <number> (accept integer indicating these levels: emerg 70 alert 60 crit 50 error 40 warn 30 notice 25 info 20 debug 10).
+        facility:   <string> (name containing usual identifier syntax: alphanumeric, underscore, but no spaces).
+        message:    <string> (description of error, needs to be static for each error, no variation from embedded variables).
+        name/value: additional arbitrary name/values allowed and will all be logged (clients need to co-ordinate the same names for analysis).
+        token:      potential authentication token (probably won't use).
+        hmac:       potential HMAC signature.
+        Will probably rely on timestamp/level/facility to generate unique reference, but depending on log format uniqueness may be unnecessary.
         """
         if str(self.path) != '/api/v1/messages':
             return self.send_error(404, 'URI Not Allowed (Use /api/v1/messages)')
@@ -43,7 +42,12 @@ class restHandler(BaseHTTPRequestHandler):
         try:
             content = self.rfile.read(int(self.headers['content-length'])) # Content in bytes: self.wfile.write(content).
             content = content.decode() # Defaults to utf-8 string.
+            pairs = parse_qs(content, keep_blank_values=True) # Expects minimum of timestamp level facility.
+            (timestamp, level, facility) = [pairs.get(key, '') for key in ('timestamp', 'level', 'facility')] # Extracts as lists.
+
+
             self.send_response(201)
+
             self.send_header('Content-type', 'text/html')
             self.send_header('Content-length', str(len(content)))
             self.end_headers()
@@ -78,6 +82,16 @@ class restHandler(BaseHTTPRequestHandler):
         """
         self.send_error(501) # Not yet implemented.
 
+    def log(self, content, timestamp, level, facility):
+        """
+        Log messages to storage.
+        Permanent record will probably be day based log files named as: YYYYMMDD-level-facility.
+        Potentially could log messages individually named as: YYYYMMDD-HHMMSS.uuuuuu-level-facility.
+        May drop messages to individual files for reliability and speed and run a worker to clean them up continually to day based log file.
+        Log probably kept in url encoded format prefixed with unique reference / index for sorting and filtering.
+        """
+        return
+
 if __name__ == '__main__':
     httpd = HTTPServer(('', 8080), restHandler) # httpd.timeout = 10 # Simple attempt to force timeout fails.
     print(str(httpd))
@@ -85,6 +99,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt: pass
     httpd.server_close()
 
+    ## https://stackoverflow.com/questions/20470831/https-server-with-python
     ## Using HTTP for now, implementing HTTPS is a simple improvement.
     ## from http.server import HTTPServer, BaseHTTPRequestHandler
     ## import ssl
