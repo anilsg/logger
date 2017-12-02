@@ -44,14 +44,18 @@ class restHandler(BaseHTTPRequestHandler):
             content = content.decode() # Defaults to utf-8 string.
             pairs = parse_qs(content, keep_blank_values=True) # Expects minimum of timestamp level facility.
             (timestamp, level, facility) = [pairs.get(key, '') for key in ('timestamp', 'level', 'facility')] # Extracts as lists.
-
-
+            timestamp = timestamp and timestamp[0] or '' # TODO: Pad trailing zeroes to %10.6d.
+            level = level and level[0] or '' # TODO: Client sends as numeric equivalent, even if client library offers named levels.
+            # TODO: Sanity check levels? I.e. only allow the specified numeric levels, do not support in-between values?
+            facility = facility and facility[0] or '' # Convert from a list of values, possibly undefined, to a reliable scalar.
+            if not (facility and level and timestamp): # Cannot log properly without these values.
+                return self.send_error(400, 'Bad Request (Requires facility, level, timestamp)')
+            self.log(content, timestamp, level, facility) # Write the message.
             self.send_response(201)
-
             self.send_header('Content-type', 'text/html')
-            self.send_header('Content-length', str(len(content)))
+            ## self.send_header('Content-length', str(len(content))) # No need to send content back.
             self.end_headers()
-            self.wfile.write(bytes(content, "utf-8"))
+            ## self.wfile.write(bytes(content, "utf-8"))
         except Exception as e:
             self.send_error(500, 'Server error: ' + repr(e))
         return
