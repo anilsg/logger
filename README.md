@@ -31,7 +31,18 @@
 
 - GET /api/v1/eventqry/// ???
 
+### Authentication
+
+- Run HTTPS server with self signed certificate only available to logging clients.
+- Run HTTP server and use a shared secret used to generate an HMAC based on facility, level and timestamp, to sign the submission.
+
 ### Pagination
+
+- Return by minutes worth of messages since a particular minute.
+- This provides / eliminates pagination since the historical resource won't change once the minute has passed.
+- Server will not return logs for the current minute.
+- May be an issue with clock skew. Consider trusting timestamps from clients or alternatively generate a server timestamp only.
+- May also return by hour or day, depending on the volume of the response, but these would be implemented as alternative resources.
 
 ### Problems
 
