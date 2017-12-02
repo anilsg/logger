@@ -15,7 +15,21 @@ class restHandler(BaseHTTPRequestHandler):
     Libraries may save to local cache with a separately running client to send the messages to the server.
     This setup would make logging calls independent of network connection and possibly improve performance and protect against surges.
     However, it may just not be required.
+
+    POST to /api/v1/messages providing these parameters:
+    facility:   <string> (name containing usual identifier syntax: alphanumeric, underscore, but no spaces).
+    level:      <number> (accept integer indicating these levels: emerg 70 alert 60 crit 50 error 40 warn 30 notice 25 info 20 debug 10).
+    timestamp:  expects UTC timestamp from client although this may introduce slight skew so could just generate on server.
+    message:    <string> (description of error, needs to be static for each error, no variation from embedded variables).
+    name/value: additional arbitrary name/values allowed and will all be logged (clients need to co-ordinate the same names for analysis).
+    token:      potential authentication token (probably won't use).
+    hmac:       potential HMAC signature.
     """
+
+    # Generating timestamps must be true UTC:
+    # datetime.datetime.now(datetime.timezone(datetime.timedelta(0), 'UTC'))
+    # datetime.datetime.now(datetime.timezone.utc).timestamp()
+    # Convert generated timestamp float to %10.6d as it can occasionally come out as %10.5d and we need consistent length.
 
     def do_POST(self):
         """
@@ -23,7 +37,7 @@ class restHandler(BaseHTTPRequestHandler):
         Always expects single individual message.
         """
         if str(self.path) != '/api/v1/messages':
-            return self.send_error(405, 'Method Not Allowed (Use /api/v1/messages)')
+            return self.send_error(404, 'URI Not Allowed (Use /api/v1/messages)')
         if self.headers['content-type'] != 'application/x-www-form-urlencoded':
             return self.send_error(400, 'Bad Request (Requires application/x-www-form-urlencoded)')
         try:
