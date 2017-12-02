@@ -35,6 +35,8 @@
 
 - Run HTTPS server with self signed certificate only available to logging clients.
 - Run HTTP server and use a shared secret used to generate an HMAC based on facility, level and timestamp, to sign the submission.
+- Almost certainly should run HTTPS since user information may be available in the error messages.
+- Could run HTTPS with a HMAC signed request but that's probably not required?
 
 ### Pagination
 
