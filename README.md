@@ -37,6 +37,8 @@
 - Run HTTP server and use a shared secret used to generate an HMAC based on facility, level and timestamp, to sign the submission.
 - Almost certainly should run HTTPS since user information may be available in the error messages.
 - Could run HTTPS with a HMAC signed request but that's probably not required?
+- Possibly IP address authentication could be applied, or basic auth.
+- Could provide additional API to dispense tokens based on a supplied secret, where tokens expire. Probably too much work for little benefit.
 
 ### Pagination
 

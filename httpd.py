@@ -22,6 +22,10 @@ class restHandler(BaseHTTPRequestHandler):
         Accept and log messages.
         Always expects single individual message.
         """
+        if str(self.path) != '/api/v1/messages':
+            return self.send_error(405, 'Method Not Allowed (Use /api/v1/messages)')
+        if self.headers['content-type'] != 'application/x-www-form-urlencoded':
+            return self.send_error(400, 'Bad Request (Requires application/x-www-form-urlencoded)')
         try:
             content = self.rfile.read(int(self.headers['content-length'])) # Content in bytes: self.wfile.write(content).
             content = content.decode() # Defaults to utf-8 string.
