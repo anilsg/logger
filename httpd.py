@@ -1,40 +1,35 @@
 #!/usr/bin/env python
+# Python 3.6.3
 
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
-import socketserver
 
-# TEST WITH:
-# -H "Content-Type: application/json"
-# -X
-# curl -i -d 'facility=logger' -d 'level=error' -d 'message=Broken pipe' -d '1512203982.239825' -d 'function=validate_email' -d 'exception=LookupError' -d 'userid=person2' -d 'email=p2@emailcom' http://localhost:8080/api/v1/messages
+# import socketserver
 
 class restHandler(BaseHTTPRequestHandler):
     """
-    Logging server.
-    Libraries possibly send with: Requests
-    Libraries possibly send with: https://docs.python.org/3/library/logging.handlers.html#logging.handlers.HTTPHandler
-    Libraries may save to local cache with a separately running client to send the messages to the server.
-    This setup would make logging calls independent of network connection and possibly improve performance and protect against surges, but may be unnecessary.
+    Handle requests to REST API to log a message and retrieve messages.
+    Use basic auth over HTTPS?
     """
 
-    # Generating timestamps must be true UTC:
     # datetime.datetime.now(datetime.timezone(datetime.timedelta(0), 'UTC'))
     # datetime.datetime.now(datetime.timezone.utc).timestamp()
-    # Convert generated timestamp float to %10.6d as it can occasionally come out as %10.5d and we need consistent length.
+    # '{:%Y%m%d-%H%M%S}'.format(datetime.datetime.now())
 
     def do_POST(self):
         """
-        Accept and log messages. Always expects single individual message.
-        POST to /api/v1/messages providing these parameters:
-        timestamp:  expects UTC timestamp from client although this may introduce slight skew so could just generate on server.
+        Accept and log individual messages in url-encoded format.
+        Rely on datetime/level/facility to generate unique reference.
+        Messages must POST to /api/v1/messages with these parameters:
+        datetime:   <YYYYMMDD-HHMMSS.uuuuuu>.
         level:      <number> (accept integer indicating these levels: emerg 70 alert 60 crit 50 error 40 warn 30 notice 25 info 20 debug 10).
         facility:   <string> (name containing usual identifier syntax: alphanumeric, underscore, but no spaces).
-        message:    <string> (description of error, needs to be static for each error, no variation from embedded variables).
-        name/value: additional arbitrary name/values allowed and will all be logged (clients need to co-ordinate the same names for analysis).
-        token:      potential authentication token (probably won't use).
-        hmac:       potential HMAC signature.
-        Will probably rely on timestamp/level/facility to generate unique reference, but depending on log format uniqueness may be unnecessary.
+        message:    <string> (static description of error, no variation from embedded variables, to ensure occurences can be counted).
+        name/value: additional arbitrary name/values allowed and will be logged (clients need to co-ordinate the same names for analysis).
+        token:      authentication token?
+        hmac:       HMAC signature?
+        E.g. curl -i -d 'facility=facility_name' -d 'level=40' -d 'message=error_name' -d 'datetime=20171203-123456.123456' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
         """
         if str(self.path) != '/api/v1/messages':
             return self.send_error(404, 'URI Not Allowed (Use /api/v1/messages)')
@@ -43,15 +38,20 @@ class restHandler(BaseHTTPRequestHandler):
         try:
             content = self.rfile.read(int(self.headers['content-length'])) # Content in bytes: self.wfile.write(content).
             content = content.decode() # Defaults to utf-8 string.
-            pairs = parse_qs(content, keep_blank_values=True) # Expects minimum of timestamp level facility.
-            (timestamp, level, facility) = [pairs.get(key, '') for key in ('timestamp', 'level', 'facility')] # Extracts as lists.
-            timestamp = timestamp and timestamp[0] or '' # TODO: Pad trailing zeroes to %10.6d.
-            level = level and level[0] or '' # TODO: Client sends as numeric equivalent, even if client library offers named levels.
-            # TODO: Sanity check levels? I.e. only allow the specified numeric levels, do not support in-between values?
+            pairs = parse_qs(content, keep_blank_values=True) # Expects minimum of datetime, level, facility.
+            (datestamp, level, facility, message) = [pairs.get(key, '') for key in ('datetime', 'level', 'facility', 'message')] # Extracts as lists.
+            datestamp = datestamp and datestamp[0] or '' # Extract first element of list. TODO: Supply default of UTC right now.
+            if len(datestamp) != 22: # Expecting YYYYMMDD-HHMSS.uuuuuu.
+                return self.send_error(400, 'Bad Request (Datetime must be YYYYMMDD-HHMMSS.uuuuuu)')
+            level = level and level[0] or '00' # Take first item in list or generate default: 00=LOG_UNSPEC.
+            if len(level) != 2 or not level.isdigit(): # 70=LOG_EMERG, 60=LOG_ALERT, 50=LOG_CRIT, 40=LOG_ERR, 30=LOG_WARNING 25=LOG_NOTICE, 20=LOG_INFO, 10=LOG_DEBUG.
+                return self.send_error(400, 'Bad Request (Level must be double digit numeric)')
             facility = facility and facility[0] or '' # Convert from a list of values, possibly undefined, to a reliable scalar.
-            if not (facility and level and timestamp): # Cannot log properly without these values.
-                return self.send_error(400, 'Bad Request (Requires facility, level, timestamp)')
-            self.log(content, timestamp, level, facility) # Write the message.
+            if not facility: # Pointless to log without facility name to show origin.
+                return self.send_error(400, 'Bad Request (Requires facility name)')
+            message = message and message[0] or 'no_message' # Convert from a list of values, possibly undefined, to a reliable scalar.
+            if not self.log(content, datestamp, level, facility, message): # Write the message.
+                return self.send_error(500, 'Server error (failed to log)')
             self.send_response(201)
             self.send_header('Content-type', 'text/html')
             ## self.send_header('Content-length', str(len(content))) # No need to send content back.
@@ -87,17 +87,24 @@ class restHandler(BaseHTTPRequestHandler):
         """
         self.send_error(501) # Not yet implemented.
 
-    def log(self, content, timestamp, level, facility):
+    def log(self, content, datestamp, level, facility, message):
         """
-        Log messages to storage.
+        Log single message to storage and return to complete log request quickly.
         content contains the full url-encoded string defining all content for the message.
-        timestamp, level, facility are all decoded out of the content string.
-        The permanent record will probably be day based log files named as: YYYYMMDD-level-facility.
-        Potentially could log messages individually named as: YYYYMMDD-HHMMSS.uuuuuu-level-facility.
-        May drop messages to individual files for reliability and speed and run a worker to clean them up continually to day based log file.
-        Log probably kept in url encoded format prefixed with unique reference / index for sorting and filtering.
+        datestamp, level, facility, message are all decoded out of the content string already.
+        Messages are logged as an individual file to a cache directory determined by the content.
+        Separately managed worker processes can then clean those up into individual log files.
+        This avoids having sub-processes and provides reliable logging when processes get killed.
+        The permanent record could be day based log files named as: YYYYMMDD-level-facility.
+        Could log messages individually YYYYMMDD-HHMMSS.uuuuuu-level-facility for reliability and run a worker to clean them up continually to day based log file.
+        Log kept in url encoded format prefixed with unique reference / index for sorting and filtering.
         """
-        print('-'.join((timestamp, level, facility)) + ': ' + content)
+        logline ='{datetime}-{level}-{facility}: {message} {content}'.format(datetime=datestamp, level=level, facility=facility, message=message, content=content)
+        print(logline)
+
+        # 1: extract required strings for logging
+        # 2: determine file name and content
+        # 3: write to appropriate cache directory and return
 
         # E.g:
         # determine filename prefix and day string
@@ -111,7 +118,10 @@ class restHandler(BaseHTTPRequestHandler):
         # if not facility in loggers[level]: loggers[level][facility] = TimedRotatingFileHandler()
         # Subclass BaseRotatingHandler or TimedRotatingFileHandler in loggers where the default name is level-facility.
         # On daily rotation move to YYMMDD-level-facility.
-        return
+
+        # Queues can deliver messages out of order, and can become corrupted if processes fail while using the queue.
+
+        return logline
 
 if __name__ == '__main__':
     httpd = HTTPServer(('', 8080), restHandler) # httpd.timeout = 10 # Simple attempt to force timeout fails.
@@ -119,6 +129,7 @@ if __name__ == '__main__':
     try: httpd.serve_forever()
     except KeyboardInterrupt: pass
     httpd.server_close()
+
 
     ## HTTPS recipe:
     ## https://stackoverflow.com/questions/20470831/https-server-with-python
@@ -141,3 +152,4 @@ if __name__ == '__main__':
     ##     try: httpd.serve_forever()
     ##     except KeyboardInterrupt: pass
     ##     httpd.socket.close()
+

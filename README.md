@@ -48,9 +48,36 @@
 - May be an issue with clock skew. Consider trusting timestamps from clients or alternatively generate a server timestamp only.
 - May also return by hour or day, depending on the volume of the response, but these would be implemented as alternative resources.
 
+### Testing
+
+- pytest, mock too awkward and involved with httpd.
+- Use a test client that checks responses from the server running locally, but problems checking logged output for this too.
+- Unit tests are not supposed to include complex dependencies like serves but this is a simple server run locally so testing will be reliable.
+- This also avoids the problems that can come from mocking where the mock is out of date or fails to replicate fully and causes false positives or negatives itself.
+- Judging by the example graphic there may be up to 500 log events per second.
+
+### Clients
+
+- Don't use logging handlers because they are thread safe but not process safe, and they also constrain the passing of data.
+- Using a local cache with a separate process to send messages to the server would also improve reliability.
+- This could also cover the client for when the logging server goes down.
+
 ### Problems
+
+- Not clear on the scale: 4 million messages in a 3 hour period, 370 requests per second?
+- Running a single process per log file to aggregate messages needs to be able to sink peak message rate.
 
 ### Further ideas
 
-## Implementation
+### To do
+
+- write log method to store messages: use logger or write file?
+- write client to provide log method and pass to server: use request or logger?
+- write get method to return logs
+- write delete method and automate call at appropriate intervals
+- write example js web app to present stats
+- add authentication
+- document api
+- testing
+
 
