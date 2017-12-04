@@ -4,7 +4,6 @@
 
 """
 Remote logging client: remote_logger.py
-TODO: Add SSL support and basic auth.
 
 Logging to the remote logging server is supported by a standard library HTTP logger.
 remote_logger just wraps the four lines to set one up in a single call.
@@ -15,7 +14,19 @@ Usage:
     logger.log(level, 'new_message', extra=record)
     remote_logger.shutdown()
 
+remote_logger passes log message and values to the remote server in a url encoded POST
+to the pre-configured conventional remote logging server address, using SSL and basic auth (TODO).
 Run this file to start a continuous stream of random test logging messages.
+
+Example of some of the values passed:
+    created=1512386686.0873692
+    name=test_facility
+    levelno=50
+    levelname=CRITICAL
+    msg=Something went wrong message.
+
+TODO: Add SSL support and basic auth. Can read userid/password from a file, if don't want to hard code.
+TODO: Catch server down exception.
 """
 
 import logging, logging.handlers
@@ -24,15 +35,13 @@ import sys
 import os
 import random
 
-# TODO: SSL and basic auth
-# TODO: Catch server down exception
-
 host = 'localhost:8080'
 route = '/api/v1/messages'
 
-# Can read userid/password from a file, if don't want to hard code.
-
 def getLogger(facility):
+    """
+    Return logger object used to send messages to remote logging server and to shutdown the logger.
+    """
     logger = logging.getLogger(facility) # Standard library logger.
     http_handler = logging.handlers.HTTPHandler(host, route, method='POST') # secure=True, context=ssl.SSLContext, credentials=(userid, password)
     http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
@@ -41,29 +50,19 @@ def getLogger(facility):
     return logger # Pass back the logger object.
 
 def shutdown():
+    """
+    Orderly shutdown for application exit.
+    """
     return logging.shutdown()
 
-# name=remote_logger
-# msg=new_message
-# levelname=CRITICAL
-# levelno=50
-# created=1512347566.426008   datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc)
-# datestamp=20171204-003246
 
 if __name__ == '__main__':
 
     logger = getLogger('test_facility')
 
     try:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        record = {}
-        record['datestamp'] = '{0:%Y%m%d-%H%M%S}.{1}'.format(now, now.microsecond)
-        record['facility'] = logger.name
-        record['level'] = str(logging.CRITICAL)
-        # record['message'] = 'new_message'
-        record['other'] = 'other key value pair'
-        record['an_other'] = 'yet other key value pair'
-        logger.log(logging.CRITICAL, 'new_message', extra=record)
+        record = {'other':'value', 'an_other':'another key value pair' }
+        logger.log(logging.CRITICAL, 'Something went wrong message.', extra=record)
 
     except KeyboardInterrupt:
         pass
