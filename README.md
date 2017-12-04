@@ -16,8 +16,8 @@ We want to accumulate errors and miscellaneous events on a central server. For t
 
 ## Independent Logging Server
 
-- **Client:**    Simple library to log a message: logger_client.py.
-- **Server:**    Remote server receives messages on REST API (POST only): logger_server.py.
+- **Client:**    Simple library to log a message: logger_remote.py.
+- **Server:**    Remote server receives messages on REST API (POST only): logger_httpd.py.
 - **Server:**    Remote server also presents REST API for analysing logs (GET only).
 - **Server:**    Remote server potentially may respond to DELETE to flush old logs early but otherwise automates rolling deletion.
 - **Collector:** Worker on remote server processes messages dumped in cache by server. logger_collector.py.
@@ -29,13 +29,13 @@ Extra name value pairs for logging in addition to the message can be supplied in
 
 Usage:
 
-        import remote_logger
-        logger = remote_logger.getLogger(__name__)
+        import logger_remote
+        logger = logger_remote.getLogger(__name__)
         ...
         record = { 'name':'value', 'other_name':'other_value' }
         logger.log(40, 'Static error message.', extra=record)
         ...
-        remote_logger.shutdown()
+        logger_remote.shutdown()
 
 Example of some of the values passed:
 

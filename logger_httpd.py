@@ -2,11 +2,11 @@
 # Python 3.6.3
 
 """
-Remote logging server.
-Handle requests to REST API to log messages and retrieve messages.
+Remote logging server: logger_httpd.py.
+Handle HTTP requests to REST API to log messages and retrieve messages.
 
 POST: Logging Messages.
-This server receives HTTP POST with the log message from remote clients.
+This server receives HTTP POST with the log message from remote clients using logger_remote.py.
 Messages are stored in temporary cache and server immediately returns response to client.
 Further aggregation of messages is managed by separate process to ensure fast server response.
 

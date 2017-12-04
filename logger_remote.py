@@ -3,18 +3,18 @@
 # curl -i -d 'facility=facility_name' -d 'level=40' -d 'message=error_name' -d 'datestamp=20171203-123456.123456' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
 
 """
-Remote logging client: remote_logger.py
+Remote logging client: logger_remote.py
 
 Logging to the remote logging server is supported by a standard library HTTP logger.
-remote_logger just wraps the four lines to set one up in a single call.
+logger_remote just wraps the four lines to set one up in a single call.
 Extra name value pairs for logging in addition to the message can be supplied in dict record.
 Usage:
-    import remote_logger
-    logger = remote_logger.getLogger(__name__)
+    import logger_remote
+    logger = logger_remote.getLogger(__name__)
     logger.log(level, 'new_message', extra=record)
-    remote_logger.shutdown()
+    logger_remote.shutdown()
 
-remote_logger passes log message and values to the remote server in a url encoded POST
+logger_remote passes log message and values to the remote server in a url encoded POST
 to the pre-configured conventional remote logging server address, using SSL and basic auth (TODO).
 
 Example of some of the values passed:

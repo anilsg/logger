@@ -2,19 +2,19 @@
 # Python 3.6.3
 
 """
-Remote logging server cache collector converts cached messages into the final log files.
+Remote logging cache collector converts cached messages into the final log files.
 The remote logging server receives messages and drops them quickly into the cache.
 This/these workers then aggregate the cached messages and feed them into specific log files.
 
 1. Messages are put into the cache by the logging server at one file per one message named: YYYYMMDD-HHMMSS.uuuuuu-levelno-facility
-2. This message_collector then moves blocks of messages into a per process, per day, temporary directory, to isolate them.
+2. This collector then moves blocks of messages into a per process, per day, temporary directory, to isolate them.
    Directories are per process to eliminate the need for locking.
    Directories are per day to partition message stream into discrete days for processing, and to simplify clean up.
-3. This message_collector then adds the isolated messages to the appropriate log files.
+3. This collector then adds the isolated messages to the appropriate log files.
    Log files exist per day, per level, per facility, to support querying.
    Log files are named: YYYYMMDD-levelno-facility.
    The individual message files are destroyed.
-4. This message_collector performs appropriate clean up at intervals.
+4. This collector performs appropriate clean up at intervals.
 
 TODO: Draw directory structure diagram here in this doc string.
 TODO: Various degrees of sophistication for improving throughput.
