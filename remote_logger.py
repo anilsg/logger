@@ -56,7 +56,7 @@ def shutdown():
     """
     return logging.shutdown()
 
-
+# Generate random test messages and send to remote logging server.
 if __name__ == '__main__':
 
     # Prepare 3 test loggers with different facility names to generate messages.
@@ -64,9 +64,9 @@ if __name__ == '__main__':
     for facility in ('facility_one', 'facility_two', 'facility_three'):
         loggers.append(getLogger(facility)) # Generate 3 test loggers.
 
-    message_limit = 1000 # Log 1000 messages and then quit.
+    message_limit = 3 # Log 1000 messages and then quit.
     try:
-        while message_limit:
+        while message_limit: # DEBUG and below will be filtered out, so you may not see the full 1000 on the server.
             message_limit -= 1 # Decrement the message limit so it doesn't run forever.
             logger = loggers[random.randrange(3)] # Pick a random facility.
             levelno = (10, 20, 25, 30, 40, 50, 60, 70)[random.randrange(8)] # logging.CRITICAL etc.
