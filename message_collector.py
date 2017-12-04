@@ -41,6 +41,17 @@ if __name__ == '__main__':
             pid = str(os.getpid()) # Get this process ID as a string.
             pid_directory = os.path.join(pids_path, today, pid) # Determine day/pid directory.
             os.makedirs(pid_directory, exist_ok=True) # Make or remake /srv/http/logger/pids/<YYYYMMDD>/<pid>/.
+
+            # Clean up two days and older empty temporary directories.
+            yesterday = '{0:%Y%m%d}'.format(now - datetime.timedelta(1)) # Date time 24 hours ago.
+            for day in os.listdir(pids_path): # Look for old temporary day directories.
+                if day < yesterday: # Two or more days old. These directories will now be static.
+                    try: # Try to delete the old directories.
+                        pids = os.listdir(os.path.join(pids_path, day)) # Pid directories inside the old day directory.
+                        for pid in pids + ['']: # All the pid directories and an extra entry for the parent day directory.
+                            os.removedirs(os.path.join(pids_path, day, pid)) # Recursive delete won't delete files.
+                    except Exception as e: # Won't remove directories if files still exist in them.
+                        pass # Shouldn't be any files left. This should automatically remove all old pid directories.
             
             # Check for candidate messages in cache.
             message_list = os.listdir(cache_directory)
