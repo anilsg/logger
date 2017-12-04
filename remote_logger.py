@@ -8,7 +8,19 @@ import random
 
 # TODO: SSL and basic auth
 # TODO: Catch server down exception
-# TODO: Package in module
+
+host = 'localhost:8080'
+route = '/api/v1/messages'
+
+# Can read userid/password from a file, if don't want to hard code.
+
+def getLogger(facility):
+    logger = logging.getLogger(facility) # Standard library logger.
+    http_handler = logging.handlers.HTTPHandler(host, route, method='POST') # secure=True, context=ssl.SSLContext, credentials=(userid, password)
+    http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
+    http_handler.raiseExceptions = False # Suppress exceptions in use.
+    logger.addHandler(http_handler) # Log everything through this handler without filtering.
+    return logger # Pass back the logger object.
 
 # name=remote_logger
 # msg=new_message
@@ -19,11 +31,7 @@ import random
 
 if __name__ == '__main__':
 
-    logger = logging.getLogger('test_facility')
-    http_handler = logging.handlers.HTTPHandler('localhost:8080', '/api/v1/messages', method='POST') # secure=True, context=ssl.SSLContext, credentials=(userid, password)
-    http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
-    http_handler.raiseExceptions = False
-    logger.addHandler(http_handler)
+    logger = getLogger('test_facility')
 
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
