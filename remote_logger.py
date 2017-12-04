@@ -2,8 +2,26 @@
 # Python 3.6.3
 # curl -i -d 'facility=facility_name' -d 'level=40' -d 'message=error_name' -d 'datestamp=20171203-123456.123456' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
 
+"""
+Remote logging client: remote_logger.py
+TODO: Add SSL support and basic auth.
+
+Logging to the remote logging server is supported by a standard library HTTP logger.
+remote_logger just wraps the four lines to set one up in a single call.
+Extra name value pairs for logging in addition to the message can be supplied in dict record.
+Usage:
+    import remote_logger
+    logger = remote_logger.getLogger(__name__)
+    logger.log(level, 'new_message', extra=record)
+    remote_logger.shutdown()
+
+Run this file to start a continuous stream of random test logging messages.
+"""
+
 import logging, logging.handlers
 import datetime
+import sys
+import os
 import random
 
 # TODO: SSL and basic auth
@@ -21,6 +39,9 @@ def getLogger(facility):
     http_handler.raiseExceptions = False # Suppress exceptions in use.
     logger.addHandler(http_handler) # Log everything through this handler without filtering.
     return logger # Pass back the logger object.
+
+def shutdown():
+    return logging.shutdown()
 
 # name=remote_logger
 # msg=new_message
@@ -47,5 +68,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
 
-    logging.shutdown()
 
