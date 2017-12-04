@@ -110,8 +110,8 @@ class restHandler(BaseHTTPRequestHandler):
         # Check and process supplied parameters.
         created = created and float(created[0]) or 0.0 # Take first list element and convert to float timestamp.
         created = datetime.datetime.fromtimestamp(created, tz=datetime.timezone.utc) # Convert epoch stamp to UTC datetime.
-        created = '{0:%Y%m%d-%H%M%S}.{1}'.format(created, created.microsecond) # And convert to string format required for storing.
-        if len(created) != 22: # Expecting YYYYMMDD-HHMSS.uuuuuu.
+        created = '{0:%Y%m%d-%H%M%S}.{1:0<6d}'.format(created, created.microsecond) # And convert to string format required for storing.
+        if len(created) != 22: # Expecting YYYYMMDD-HHMMSS.uuuuuu.
             return self.send_error(400, 'Bad Request (created must be timestamp ssssssssss.uuuuuu)')
 
         levelno = levelno and levelno[0] or '00' # Take first item in list or generate default: 00=LOG_UNSPECIFIED. Retain as string.

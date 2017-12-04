@@ -28,6 +28,7 @@ Run this file to start a continuous stream of random test logging messages.
 
 TODO: Add SSL support and basic auth. Can read userid/password from a file, if don't want to hard code.
 TODO: Catch server down exception.
+TODO: Consider reporting server responses in general in case of error.
 """
 
 import logging, logging.handlers
