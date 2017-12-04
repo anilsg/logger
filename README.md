@@ -145,6 +145,10 @@ Therefore for a given resource `resource` the following can all be queried:
 - Pagination is not used for this resource.
 - Filtering is not used for this resource.
 
+### Implementation
+
+See doc strings.
+
 ### Testing
 
 - Not implemented yet.

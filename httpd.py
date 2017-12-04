@@ -3,6 +3,13 @@
 
 """
 Remote logging server.
+Handle requests to REST API to log messages and retrieve messages.
+
+POST: Logging Messages.
+This server receives HTTP POST with the log message from remote clients.
+Messages are stored in temporary cache and server immediately returns response to client.
+Further aggregation of messages is managed by separate process to ensure fast server response.
+
 TODO: Basic auth over SSL.
 TODO: Forking.
 """
@@ -16,15 +23,10 @@ from urllib.parse import parse_qs
 
 class restHandler(BaseHTTPRequestHandler):
     """
-    Handle requests to REST API to log messages and retrieve messages.
-
-    POST: Logging Messages.
-    This server receives HTTP POST with the log message from remote clients.
-    Messages are stored in temporary cache and server immediately returns response to client.
-    Further aggregation of messages is managed by separate process to ensure fast server response.
+    Handle requests to REST API to log and retrieve messages.
     """
 
-    cache_path = '/srv/http/logger/cache' # This is the cache destination for all messages received.
+    cache_path = '/srv/logger/cache' # This is the cache destination for all messages received.
 
     def do_POST(self):
         """
@@ -99,7 +101,7 @@ class restHandler(BaseHTTPRequestHandler):
         TODO: Default to UTC now() if created timestamp is missing.
         TODO: Catch exceptions and report sensibly.
         """
-        print(content, '\n') ## Testing / debug.
+        ## print(content, '\n') ## Testing / debug.
 
         # Decode url-encoded pairs.
         pairs = parse_qs(content, keep_blank_values=True) # Extract from url-encoded string into lists of values.
@@ -122,7 +124,7 @@ class restHandler(BaseHTTPRequestHandler):
         # Construct cached message name and internal information.
         filename ='{created}-{levelno}-{facility}'.format(created=created, levelno=levelno, facility=facility)
         logline ='{filename}:{message}:{content}'.format(filename=filename, message=message, content=content)
-        print(logline, '\n\n') ## Testing / debug.
+        ## print(logline, '\n\n') ## Testing / debug.
 
         # Write the message to the temporary cache.
         with open(path.join(self.cache_path, filename), mode='a', encoding='utf-8') as outfile:

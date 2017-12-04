@@ -26,8 +26,8 @@ import os
 import datetime
 import time
 
-log_path = '/srv/http/logger'
-pids_path = os.path.join(log_path, 'pids') # Directories will be at /srv/http/logger/pids/<YYYYMMDD>/<pid>/.
+log_path = '/srv/logger'
+pids_path = os.path.join(log_path, 'pids') # Directories will be at /srv/logger/pids/<YYYYMMDD>/<pid>/.
 cache_directory = os.path.join(log_path, 'cache') # Message files dropped in this directory by server.
 log_directory = os.path.join(log_path, 'logs') # Message files dropped in this directory by server.
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
             today = '{0:%Y%m%d}'.format(now) # Get an ISO order date string YYYYMMDD.
             pid = str(os.getpid()) # Get this process ID as a string.
             pid_directory = os.path.join(pids_path, today, pid) # Determine day/pid directory.
-            os.makedirs(pid_directory, exist_ok=True) # Make or remake /srv/http/logger/pids/<YYYYMMDD>/<pid>/.
+            os.makedirs(pid_directory, exist_ok=True) # Make or remake /srv/logger/pids/<YYYYMMDD>/<pid>/.
 
             # Clean up two days and older empty temporary directories.
             yesterday = '{0:%Y%m%d}'.format(now - datetime.timedelta(1)) # Date time 24 hours ago.
