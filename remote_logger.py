@@ -16,7 +16,6 @@ Usage:
 
 remote_logger passes log message and values to the remote server in a url encoded POST
 to the pre-configured conventional remote logging server address, using SSL and basic auth (TODO).
-Run this file to start a continuous stream of random test logging messages.
 
 Example of some of the values passed:
     created=1512386686.0873692
@@ -24,6 +23,8 @@ Example of some of the values passed:
     levelno=50
     levelname=CRITICAL
     msg=Something went wrong message.
+
+Run this file to start a continuous stream of random test logging messages.
 
 TODO: Add SSL support and basic auth. Can read userid/password from a file, if don't want to hard code.
 TODO: Catch server down exception.
@@ -58,13 +59,22 @@ def shutdown():
 
 if __name__ == '__main__':
 
-    logger = getLogger('test_facility')
+    # Prepare 3 test loggers with different facility names to generate messages.
+    loggers = list()
+    for facility in ('facility_one', 'facility_two', 'facility_three'):
+        loggers.append(getLogger(facility)) # Generate 3 test loggers.
 
+    message_limit = 1000 # Log 1000 messages and then quit.
     try:
-        record = {'other':'value', 'an_other':'another key value pair' }
-        logger.log(logging.CRITICAL, 'Something went wrong message.', extra=record)
+        while message_limit:
+            message_limit -= 1 # Decrement the message limit so it doesn't run forever.
+            logger = loggers[random.randrange(3)] # Pick a random facility.
+            levelno = (10, 20, 25, 30, 40, 50, 60, 70)[random.randrange(8)] # logging.CRITICAL etc.
+            record = {'other':'value', 'an_other':'another key value pair'} # Demo additional data.
+            logger.log(levelno, 'Something went wrong message.', extra=record) # Send to logging server.
 
     except KeyboardInterrupt:
         pass
 
+    shutdown() # Orderly application exit.
 
