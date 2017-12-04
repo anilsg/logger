@@ -90,6 +90,7 @@ class restHandler(BaseHTTPRequestHandler):
                 return self.send_error(500, 'Server error (failed to log)')
         """
         # TODO: Replace newlines with spaces in content string.
+        print(content)
         pairs = parse_qs(content, keep_blank_values=True) # Extract from url-encoded into lists.
         (datestamp, level, facility, message) = [pairs.get(key, '') for key in ('datestamp', 'level', 'facility', 'message')] # Extracts as lists.
         datestamp = datestamp and datestamp[0] or '' # Extract first element of list. TODO: Default to UTC now if missing.
