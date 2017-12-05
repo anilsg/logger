@@ -14,12 +14,11 @@ TODO: Basic auth over SSL.
 TODO: Forking.
 """
 
-from os import path
+import os
 import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
 
-# import socketserver
 
 class restHandler(BaseHTTPRequestHandler):
     """
@@ -67,7 +66,6 @@ class restHandler(BaseHTTPRequestHandler):
         """
         Return logged messages.
         Support multiple routes providing by the minute, by the hour, by the day.
-        Could be used to download portions of the logs.
         Not yet implemented.
         """
         try:
@@ -92,7 +90,7 @@ class restHandler(BaseHTTPRequestHandler):
     def log(self, content):
         """
         Log single message to cache storage and return to complete log request quickly.
-        content contains the full url-encoded string defining all content for the message.
+        content contains the full url-encoded utf-8 string defining all content for the message.
         Messages are logged as individual files named YYYYMMDD-HHMMSS.uuuuuu-level-facility to the cache directory in self.cache_path.
         Separately managed worker processes then aggregate those into individual log files organised for retrieval.
         This avoids managing sub-processes in this server and provides reliable logging even when processes get killed.
@@ -101,8 +99,6 @@ class restHandler(BaseHTTPRequestHandler):
         TODO: Default to UTC now() if created timestamp is missing.
         TODO: Catch exceptions and report sensibly.
         """
-        ## print(content, '\n') ## Testing / debug.
-
         # Decode url-encoded pairs.
         pairs = parse_qs(content, keep_blank_values=True) # Extract from url-encoded string into lists of values.
         (created, levelno, facility, message) = [pairs.get(key, '') for key in ('created', 'levelno', 'name', 'msg')] # Extracts as lists.
@@ -123,11 +119,10 @@ class restHandler(BaseHTTPRequestHandler):
 
         # Construct cached message name and internal information.
         filename ='{created}-{levelno}-{facility}'.format(created=created, levelno=levelno, facility=facility)
-        logline ='{filename}:{message}:{content}'.format(filename=filename, message=message, content=content)
-        ## print(logline, '\n\n') ## Testing / debug.
+        logline ='{filename}:{message}:{content}\n'.format(filename=filename, message=message, content=content)
 
         # Write the message to the temporary cache.
-        with open(path.join(self.cache_path, filename), mode='a', encoding='utf-8') as outfile:
+        with open(os.path.join(self.cache_path, filename), mode='a', encoding='utf-8') as outfile:
             outfile.write(logline) # Append rather than write protects against rare collisions and should work, retaining both messages.
 
 if __name__ == '__main__':

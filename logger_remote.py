@@ -46,7 +46,7 @@ def getLogger(facility):
     """
     logger = logging.getLogger(facility) # Standard library logger.
     http_handler = logging.handlers.HTTPHandler(host, route, method='POST') # secure=True, context=ssl.SSLContext, credentials=(userid, password)
-    http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
+    ## http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
     http_handler.raiseExceptions = False # Suppress exceptions in use.
     logger.addHandler(http_handler) # Log everything through this handler without filtering.
     return logger # Pass back the logger object.
@@ -65,14 +65,16 @@ if __name__ == '__main__':
     for facility in ('facility_one', 'facility_two', 'facility_three'):
         loggers.append(getLogger(facility)) # Generate 3 test loggers.
 
-    message_limit = 3 # Log 1000 messages and then quit.
+    message_limit = 1000 # Log 10,000 messages and then quit.
     try:
+        messages = ['Something went wrong message.', 'Houston has a problem message.', 'Something else in the red message.']
         while message_limit: # DEBUG and below will be filtered out, so you may not see the full 1000 on the server.
             message_limit -= 1 # Decrement the message limit so it doesn't run forever.
             logger = loggers[random.randrange(3)] # Pick a random facility.
-            levelno = (10, 20, 25, 30, 40, 50, 60, 70)[random.randrange(8)] # logging.CRITICAL etc.
+            levelno = (20, 25, 30, 40, 50, 60, 70)[random.randrange(7)] # logging.CRITICAL etc.
+            message = messages[random.randrange(3)] # Slightly random message.
             record = {'other':'value', 'an_other':'another key value pair'} # Demo additional data.
-            logger.log(levelno, 'Something went wrong message.', extra=record) # Send to logging server.
+            logger.log(levelno, message, extra=record) # Send to logging server.
 
     except KeyboardInterrupt:
         pass

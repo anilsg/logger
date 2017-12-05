@@ -55,7 +55,6 @@ if __name__ == '__main__':
             
             # Check for candidate messages in cache.
             message_list = os.listdir(cache_directory)
-            print("messages", len(message_list)) ## Testing / debug.
             if not len(message_list): # Nothing to do.
                 time.sleep(5) # Must be a quiet period.
                 continue # Restart full process in order to handle day rollover.
@@ -65,7 +64,6 @@ if __name__ == '__main__':
             for message_name in message_list: # Message name format supports date order sorting: YYYYMMDD-HHMMSS.uuuuuu-levelno-facility
                 try:
                     os.rename(os.path.join(cache_directory, message_name), os.path.join(pid_directory, message_name))
-                    break ## Testing / debug one at a time. Remove this later for bulk processing.
                 except: # Any failure aborts further processing.
                     break # But messages already isolated still need to be processed.
 
