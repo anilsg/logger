@@ -1,33 +1,28 @@
 #!/usr/bin/env python
 # Python 3.6.3
-# curl -i -d 'facility=facility_name' -d 'level=40' -d 'message=error_name' -d 'datestamp=20171203-123456.123456' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
+# logger_remote.py
 
 """
-Remote logging client: logger_remote.py
+logger_remote.py:
+Client library POSTs url-encoded messages containing error level, facility name, and error message to logger_httpd.py.
+User defined name value pairs can be logged in addition to the level, facility and message.
+Logging to the remote server is supported using a standard Python library logging.handlers.HTTPHandler.
+Run python logger_remote.py to generate a stream of random test messages.
+Authentication can be by basic auth over SSL.
 
-Logging to the remote logging server is supported by a standard library HTTP logger.
-logger_remote just wraps the four lines to set one up in a single call.
-Extra name value pairs for logging in addition to the message can be supplied in dict record.
 Usage:
-    import logger_remote
-    logger = logger_remote.getLogger(__name__)
-    logger.log(level, 'new_message', extra=record)
-    logger_remote.shutdown()
+import logger_remote
+logger = logger_remote.get_logger(__name__)
+record = { 'key': 'value' }
+logger.log(level, 'error message', extra=record)
+logger_remote.shutdown()
 
-logger_remote passes log message and values to the remote server in a url encoded POST
-to the pre-configured conventional remote logging server address, using SSL and basic auth (TODO).
+POST equivalent:
+curl -i -d 'name=facility_name' -d 'levelno=40' -d 'msg=error message' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
 
-Example of some of the values passed:
-    created=1512386686.0873692
-    name=test_facility
-    levelno=50
-    levelname=CRITICAL
-    msg=Something went wrong message.
-
-Run this file to start a continuous stream of random test logging messages.
-
-TODO: Add SSL support and basic auth. Can read userid/password from a file, if don't want to hard code.
-TODO: Catch server down exception.
+TODO: Add SSL and basic auth. Read userid/password from a file or the environment.
+TODO: Inspect internal operation of logging.handlers.HTTPHandler in case of client side errors that need to be caught.
+TODO: Catch remote logging server down exception.
 TODO: Consider reporting server responses in general in case of error.
 """
 
@@ -40,13 +35,14 @@ import random
 host = 'localhost:8080'
 route = '/api/v1/messages'
 
-def getLogger(facility):
+def get_logger(facility):
     """
-    Return logger object used to send messages to remote logging server and to shutdown the logger.
+    Return logger object used to send messages to remote logging server.
+    This call only wraps four lines of logging library calls to set up a logger in a single call.
     """
-    logger = logging.getLogger(facility) # Standard library logger.
+    logger = logging.getLogger(facility) # Set up standard library logger named with the facility name.
     http_handler = logging.handlers.HTTPHandler(host, route, method='POST') # secure=True, context=ssl.SSLContext, credentials=(userid, password)
-    ## http_handler.setLevel(logging.INFO) # Using logging.DEBUG or 0 may raise the rate of message passing too high.
+    # http_handler.setLevel(logging.INFO) # Level defaults to INFO, DEBUG or 0 will not be sent.
     http_handler.raiseExceptions = False # Suppress exceptions in use.
     logger.addHandler(http_handler) # Log everything through this handler without filtering.
     return logger # Pass back the logger object.
@@ -61,19 +57,16 @@ def shutdown():
 if __name__ == '__main__':
 
     # Prepare 3 test loggers with different facility names to generate messages.
-    loggers = list()
-    for facility in ('facility_one', 'facility_two', 'facility_three'):
-        loggers.append(getLogger(facility)) # Generate 3 test loggers.
-
-    message_limit = 1000 # Log 10,000 messages and then quit.
+    loggers = list(get_logger(facility) for facility in ('facility_one', 'facility_two', 'facility_three')) # Generate 3 test loggers.
+    message_limit = 1000 # Log a number of test messages and then quit.
     try:
         messages = ['Something went wrong message.', 'Houston has a problem message.', 'Something else in the red message.']
-        while message_limit: # DEBUG and below will be filtered out, so you may not see the full 1000 on the server.
-            message_limit -= 1 # Decrement the message limit so it doesn't run forever.
+        while message_limit:
+            message_limit -= 1 # Decrement message count.
             logger = loggers[random.randrange(3)] # Pick a random facility.
-            levelno = (20, 25, 30, 40, 50, 60, 70)[random.randrange(7)] # logging.CRITICAL etc.
-            message = messages[random.randrange(3)] # Slightly random message.
-            record = {'other':'value', 'an_other':'another key value pair'} # Demo additional data.
+            levelno = (20, 25, 30, 40, 50, 60, 70)[random.randrange(7)] # Pick a random log level (logging.CRITICAL etc).
+            message = messages[random.randrange(3)] # Pick a slightly random message.
+            record = {'key':'value', 'an':'other'} # Add additional data to demonstrate.
             logger.log(levelno, message, extra=record) # Send to logging server.
 
     except KeyboardInterrupt:
