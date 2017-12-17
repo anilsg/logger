@@ -18,6 +18,7 @@ import os
 import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
+from logger_resource import get_filter
 
 
 class restHandler(BaseHTTPRequestHandler):
@@ -69,12 +70,21 @@ class restHandler(BaseHTTPRequestHandler):
         Not yet implemented.
         """
         try:
-            content = self.path
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.send_header('Content-length', str(len(content)))
-            self.end_headers()
-            self.wfile.write(bytes(content, "utf-8"))
+            filtered = get_filter(self.path)
+            if filtered.resource == 'messages':
+                return self.send_error(501, 'Response for messages resource not yet implemented')
+            if filtered.resource == 'ranges':
+                return self.send_error(501, 'Response for ranges resource not yet implemented')
+            if filtered.resource == 'counts':
+                filtered.get_counts()
+                content = 'message_count=' + str(filtered.message_count)
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain')
+                self.send_header('Content-length', str(len(content)))
+                self.end_headers()
+                self.wfile.write(bytes(content, "utf-8"))
+                return
+            return self.send_error(501, 'Unknown resource type')
         except:
             self.send_error(500)
         return
@@ -134,7 +144,6 @@ if __name__ == '__main__':
 
 
     ## HTTPS recipe:
-    ## https://stackoverflow.com/questions/20470831/https-server-with-python
     ## Using HTTP for now, implementing HTTPS is a simple improvement.
     ## from http.server import HTTPServer, BaseHTTPRequestHandler
     ## import ssl
