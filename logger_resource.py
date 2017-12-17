@@ -17,16 +17,15 @@ class get_filter():
     Instead of since duration use since until
     /api/v1/counts/since/until/levels/names
     url = '/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one'
+    TODO: Strip empty strings from facilities list generated from trailing slash in URL.
     """
     def __init__(self, url='/api/v1/counts'):
         url = url[8:]
-        print(url)
         (self.resource, since, until, levels, *facilities) = split_min(url, sep='/', minvals=4)
         (self.since, self.start_time) = split_min(since, sep='-', minvals=2)
         (self.until, self.stop_time) = split_min(until, sep='-', minvals=2)
         (self.start_level, self.stop_level) = split_min(levels, sep='-', minvals=2)
         self.facilities = facilities
-        print(self.resource)
 
     def get_counts(self):
         """
@@ -49,7 +48,6 @@ class get_filter():
             if self.start_level and level < self.start_level: continue
             if self.stop_level and level > self.stop_level: continue
             if self.facilities and facility not in self.facilities: continue
-            print("reading", log_name) # DEBUG
             start_time = day == self.since and self.start_time or ''
             stop_time = day == self.until and self.stop_time or ''
             with open(os.path.join(log_directory, log_name), mode='r') as log_file:
@@ -60,8 +58,9 @@ class get_filter():
                     message_count += 1
         self.message_count = message_count
 
-url = '/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one'
-#filtered = get_filter(url)
-filtered = get_filter()
-filtered.get_counts()
-print(filtered.message_count)
+if __name__ == '__main__':
+    url = '/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one/facility_two/facility_three/'
+    filtered = get_filter(url)
+    print(filtered.facilities)
+    filtered.get_counts()
+    print(filtered.message_count)
