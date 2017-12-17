@@ -18,13 +18,15 @@ class get_filter():
     /api/v1/counts/since/until/levels/names
     url = '/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one'
     """
-    def __init__(self, url):
-        url = url[15:]
-        (since, until, levels, *facilities) = split_min(url, sep='/', minvals=3)
+    def __init__(self, url='/api/v1/counts'):
+        url = url[8:]
+        print(url)
+        (self.resource, since, until, levels, *facilities) = split_min(url, sep='/', minvals=4)
         (self.since, self.start_time) = split_min(since, sep='-', minvals=2)
         (self.until, self.stop_time) = split_min(until, sep='-', minvals=2)
         (self.start_level, self.stop_level) = split_min(levels, sep='-', minvals=2)
         self.facilities = facilities
+        print(self.resource)
 
     def get_counts(self):
         """
@@ -59,6 +61,7 @@ class get_filter():
         self.message_count = message_count
 
 url = '/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one'
-filtered = get_filter(url)
+#filtered = get_filter(url)
+filtered = get_filter()
 filtered.get_counts()
 print(filtered.message_count)
