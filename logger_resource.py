@@ -4,6 +4,29 @@ import os
 log_path = '/srv/logger'
 log_directory = os.path.join(log_path, 'logs') # Available logs.
 
+def split_min(url, sep='/', minvals=3):
+    for tok in url.split(sep):
+        minvals -= 1
+        yield tok
+    while minvals > 0:
+        minvals -= 1
+        yield ''
+
+def get_filter(url):
+    (since, until, levels, *facilities) = split_min(url[15:])
+    print("since/until/levels/facilities:", since, '/', until, '/', levels, '/', facilities)
+
+    (since, start_time) = split_min(since, sep='-', minvals=2)
+    print("since / start_time:", since, '/', start_time)
+
+    (until, stop_time) = split_min(until, sep='-', minvals=2)
+    print("until / stop_time:", until, '/', stop_time)
+
+    (start_level, stop_level) = split_min(levels, sep='-', minvals=2)
+    print("start_level / stop_level:", start_level, '/', stop_level)
+
+get_filter('/api/v1/counts/20171205-134200/20171205-134223/30-40/facility_one')
+
 def get_counts():
     """
     E.g. curl -i http://localhost:8080/api/v1/counts/20171205/02/?name=facility_one
@@ -44,4 +67,4 @@ def get_counts():
                 message_count += 1
     return message_count
 
-print(get_counts())
+#print(get_counts())
