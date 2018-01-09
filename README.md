@@ -2,199 +2,256 @@
 
 # Remote Logging Service
 
-- **Title:**    Logger Server
-- **Date:**     2017-11-30
-- **Subject:**  Independent logging REST service
-- **Author:**   Anil (Neil) Gulati
+- **Title:**   Simple Central Logger
+- **Date:**    2017-11-30
+- **Subject:** Independent logging REST service
+- **Author:**  Anil (Neil) Gulati
 
-## Overall description
+## Overview
 
-We want to accumulate errors and miscellaneous events on a central server. For this, we need to implement a two-fold application:
+Simple Python (3.6.4) central logging server
+to collect logs of errors and events from multiple locations,
+provide short term storage of logs
+and respond on a REST API to queries about stored logs.
 
-- **Client side library**, seamlessly integrated into current infrastructure with minimal set of extra requirements.
-- **Server side**, working on a separate server, and available over the network to accept error messages and provide API for the clients to process and visualize these messages.
+- A single API accepts log submissions and responds to requests to provide log information.
+- Two services running on the logging host are used to receive and store logger submissions quickly.
+- A client module is provided for making remote log submissions.
+- Service manages data clean up according to automated schedule.
 
-## Independent Logging Server
+The services are light and simple.
+The client module is barely a wrapper around existing standard Python logging.
 
-- **Client:**    Simple library to log a message: logger_remote.py.
-- **Server:**    Remote server receives messages on REST API (POST only): logger_httpd.py.
-- **Server:**    Remote server also presents REST API for analysing logs (GET only).
-- **Server:**    Remote server potentially may respond to DELETE to flush old logs early but otherwise automates rolling deletion.
-- **Collector:** Worker on remote server processes messages dumped in cache by server. logger_collector.py.
+Consists of these files:
 
-## Logger Client
+- **``README.md``**:            This file.
+- **``logger_remote.py``**:     Client module providing call to log from remote clients.
+- **``logger_httpd.py``**:      Direct recipient of log submissions on server.
+- **``logger_collector.py``**:  Secondary processing of submitted logs to organise for querying.
+- **``logger_resource.py``**:   Responds on REST API to provide query service.
+- **``test_resource.py``**:     Tests for ``logger_resource.py``.
 
-Logging to the remote logging server is supported by the standard library HTTP logger.
-Extra name value pairs for logging in addition to the message can be supplied in the record dict.
+## Remote Logging
 
-Usage:
+- **``logger_remote.py``**
 
-        import logger_remote
-        logger = logger_remote.getLogger(__name__)
-        ...
-        record = { 'name':'value', 'other_name':'other_value' }
-        logger.log(40, 'Static error message.', extra=record)
-        ...
-        logger_remote.shutdown()
+Logging to the remote server is supported using the standard Python library ``logging.handlers.HTTPHandler``.
+A wrapper is provided to simplify usage.
+The client module POSTs url-encoded messages to the server.
+Date / time is automatically recorded.
+POSTs can provide arbitrary name value pairs to be included in the log record.
+POSTs must provide:
 
-Example of some of the values passed:
+- **name:**    facility name identifying the logging source (required).
+- **msg:**     description of the error or event (required). It is recommended this message text is fixed, not containing variable parameters, which can be provided through other values.
+- **levelno:** standard log level numbers are recommended: 20, 25, 30, 40, 50, 60, 70 (required).
+- **created:** UTC timestamp e.g. 1514634365.9128094
 
-- created=1512386686.0873692
-- name=test_facility
-- levelno=50
-- levelname=CRITICAL
-- msg=Something went wrong message.
+### Usage
 
-### Fields
+```python
+import logger_remote # import logger_remote.py
 
-- **facility:**     Unique name supplied by logger to tag this message source.
-- **created:**      Logger provides a timestamp at the time the message was created.
-- **level:**        Normal log levels supported: emerg alert crit error warn notice info debug.
-- **message:**      Fixed string describing the particular error from this particular facility.
-- **additional:**   Additional arbitrary name / value pairs can be sent to log context and state from the error such as: exception, headers, user-id, user-email, etc.
+# This usage will use the current module name as the facility name in the log.
+logger = logger_remote.get_logger(__name__)
+
+# ... do stuff ...
+
+# Provide a mapping of additional arbitrary name value pairs to be logged.
+record = { 'key': 'value' }
+# Supply the log level number and error message text.
+logger.log(level, 'error message', extra=record)
+
+# ... do more stuff ...
+
+# Call shutdown after use of the logger has finished.
+logger_remote.shutdown()
+```
 
 ### Authentication
 
+Not yet implemented.
+Authenticate using basic auth over SSL or a shared secret token.
+
 - Run HTTPS server with basic auth.
-- Logging information may include user data so need to run HTTPS.
-- Possibly IP address authentication could be applied, shared secret HMAC signature...
-- Could provide additional API to dispense tokens based on a supplied secret, where tokens expire. Probably too much work for little benefit.
+- Logging information may include user data so this is another reason to use HTTPS.
+- Potentially client IP address authentication could also be applied.
+
+### Other
+
+Run ``python logger_remote.py`` to generate a stream of random test messages to test the logging server.
+
+## Log submission
+
+- **``logger_httpd.py``**
+- **``logger_collector.py``**
+
+The logger service is managed by two separate services running on the server.
+These services run as two separate processes, and potentially with additional copies if required.
+These services accept requests to submit (and query) the logs and managed storage of logs.
+
+All POSTs are log submissions.
+(All GETs are log information requests).
 
 ### POST API
 
-- POST /api/v1/eventlog
-- POST API is taken care of by logging handler.
-- POST API consists of one route and all parameters included are url-encoded.
-- Refer also to doc strings.
+POST API consists of one route / resource with all parameters url-encoded.
+Messages must POST to ``/api/v1/messages`` with these parameters.
+Parameters align to those generated and used by Python standard library logging module.
 
-Messages must POST to /api/v1/messages with these parameters.
-Parameters align to those generated and used by logging standard library module.
+- ``created``:    datetime timestamp generated by the logger e.g: 1512386686.0873692.
+- ``name``:       Facility name (given to logger on creation), using usual identifier syntax: alphanumeric, underscore, no spaces.
+- ``levelno``:    The syslog logging level numeric equivalent: emerg=70 alert=60 crit=50 error=40 warn=30 notice=25 info=20 debug=10. Two decimal digits required (10 - 99).
+- ``msg``:        Static string description of error. Do not use embedded formatting or variables, in order to support counting of similar errors and other analysis.
+- ``name/value``: Additional arbitrary name/values are allowed and will be logged (clients need to co-ordinate the same names to support analysis). This is the best way to include variable parameters.
 
-- created:    datetime timestamp generated by the logger like this: 1512386686.0873692.
-- name:       Facility name (given to logger on creation), using usual identifier syntax: alphanumeric, underscore, no spaces.
-- levelno:    The usual logging level numeric equivalent: emerg=70 alert=60 crit=50 error=40 warn=30 notice=25 info=20 debug=10. Two decimal digits expected.
-- msg:        Static string description of error, without embedded formatting or variables, to support counting.
-- name/value: Additional arbitrary name/values allowed and will be logged (clients need to co-ordinate the same names for analysis).
+E.g. ``curl -i -d 'name=facility_name' -d 'levelno=40' -d 'msg=This is the error message.' -d 'created=1512386686.123456' -d 'additional_key=additional_value' http://hostname:8080/api/v1/messages``
 
-E.g. curl -i -d 'name=facility_name' -d 'levelno=40' -d 'msg=This is the error message.' -d 'created=1512386686.123456' -d 'additional_key=additional_value' http://hostname:8080/api/v1/messages
+### Log Recording Process
+
+1. ``logger_remote.py`` client module POSTs messages to the URL where ``logger_httpd.py`` server is listening over HTTPS.
+2. Messages are cached by ``logger_httpd.py`` at one file per message using a filename of the form: ``YYYYMMDD-HHMMSS.uuuuuu-levelno-facility``.
+   ``logger_httpd.py`` immediately returns confirmation response to client.
+3. ``logger_collector.py``, also running on the server, repeatedly moves blocks of cached messages into a per process, per day, temporary directory, to isolate them.
+   Directories are per process to eliminate the need for locking.
+   Directories are per day to partition message stream into discrete days to simplify processing and clean up.
+4. ``logger_collector.py`` then adds the isolated individual messages to the appropriate log files, one line per message.
+   Log files are named ``YYYYMMDD-levelno-facility`` to partition by day, level and facility to reduce workload when querying.
+5. The individual message files are destroyed.
+6. ``logger_collector.py`` performs appropriate clean up at intervals, such as expiring and deleting logs.
+
+### Logging Data Structure
+
+- **``/srv/logger/cache/``**: Primary cache contains individual message files of the form ``YYYYMMDD-HHMMSS.uuuuuu-LL-facility_name`` (u for microseconds, L for log level). All log submissions arrive here first.
+- **``/srv/logger/pids/YYYYMMDD/pid_number/``**: Secondary cache contains the same files from the primary cache but in batch lots for processing. All log submissions are moved into one of these sub-directories.
+- **``/srv/logger/logs/``**: Contains all log files. Log files are named ``YYYYMMDD-LL-facility_name``.
+
+The primary cache is a single catch-all directory for receiving all events for logging as one file per event.
+This directory will never contain files for long as they are usually immediately moved for further processing.
+In the event of a partial failure the event information is retained, though, and processing can continue seamlessly after a delay.
+
+The secondary cache provides isolation of the message files for adding to the log files in batches.
+Each secondary processor (``logger_collector.py``) isolates files using an atomic move to a directory named by its process number, to prevent race conditions or conflicts.
+Again any temporary or partial failures are handled seamlessly. An interruption in processing can be re-continued at any time.
+Separating the directories by date also supports easy clean up, and ensures the eventual re-use of process IDs is not an issue.
+
+The log file naming scheme effectively provides simple indexing of the logs ready for querying.
+Message information is appended to the appropriate log file by ``logger_collector.py`` processes.
+This requires negotiation of access to the files when there are multiple processes doing this work (not yet implemented)
+but processing in batches improves efficiency and reduces wait times.
+In any case, because the actual HTTP server has already responded to the client, delays here will not affect network logging response times for clients.
+
+The maximum number of log files in the logging directory will be:
+
+```
+no. of days history x no. of log levels x no. of distinct facilities
+E.g. 14 x 8 x 50 = 5,600
+```
+
+## Retrieving Log Information
+
+- **``logger_httpd.py``**
+- **``logger_resource.py``**
+
+GET requests to the log submission server are used to retrieve log information.
+These separate resource types are available:
+
+- **counts:**   Retrieve a count of how many recorded events match the criteria supplied with the request.
+- **ranges:**   TBA.
+- **messages:** Retrieve full information for one or more recorded event or error messages matching criteria supplied.
 
 ### GET API
 
-Several GET APIs are presented, with some common elements between all of them. (Not yet implemented).
+The GET API consists of different routes / resources.
+Messages must GET from ``/api/v1/counts``, ``/api/v1/ranges`` or ``/api/v1/messages``.
+
+Only counts are implemented so far.
+
 All GET responses are returned in JSON.
 
-#### Resource Paths
+Request parameters are supplied in order in the resource path. URL parameters are not used.
 
-Resource paths are all presented by day, hour and minute.
+URLs are of this form:
 
-Therefore for a given resource `resource` the following can all be queried:
+- ``/api/v1/<resource>/<since>/<until>/<levels>/<facility_name>/<facility_name>/...``
 
-- **/api/v1/resource/**:                 Returns the range of date times available for this resource as a start, end, duration.
-- **/api/v1/resource/YYYYMMDD/**:        Returns the resource for the whole of this day.
-- **/api/v1/resource/YYYYMMDD/HH/**:     Returns one hour of the resource.
-- **/api/v1/resource/YYYYMMDD/HH/MM/**:  Returns one minute of the resource.
+Where:
 
-#### Pagination
+- **``<resource>``** is one of ``counts``, ``ranges``, ``messages``.
+- **``<since>``** and **``<until>``** are date/times of the form "YYYYMMDD-HHMMSS". Microsecond resolution is not supported.
+- **``<levels>``** are log levels always expressed as double digit numbers, either an individual level "LL" or a range "LL-MM".
+- **``<facility_name>``** is an individual facility name to be included. Multiple facility names can be requested.
 
-- Pagination is determined by a `duration` in minutes `since` a particular minute.
-- Pagination can be requested by the client providing these two values, and can be forced by the server if determined due to bulk of response.
-- Pagination doesn't need to be managed since the number of minutes in an hour or a day are known in advance by both server and client.
-- Pagination `duration` and `since` values are always in minutes within the context of the day or hour of the resource supplied as parameters and returned by the server.
-- E.g. resource/20171203/00?duration=60&since=0 returns the first 60 minutes on 3 Dec after midnight.
-- Server will not return logs for the current minute, and possibly a few minutes in arrears.
-- Server may elect to return different `duration` and `since` values than those supplied.
+If any of these value types are omitted the meaning is taken as "including all".
+So for example, if no facility name was provided, all facilities would be intended.
+Refer to ``logger_resource.py``.
 
-#### Filters
-
-- Simple well known filters are provided by parameter for facility name, level, and error message.
-- Parameters are `facility=<name>`, `level=<DD>` and `message=<string>`.
-- Plus / space separated lists of values can also be provided for facility and level.
-- Refer also to tagging in further ideas. A separate API can be used to define tags which are then submitted as a parameter `tag=<tagname>` to elicit that filtering.
-- Filtering on additional extra data submitted with the log records can also be applied.
-  All `name=value` parameters submitted with a query if not understood by other features will be applied as additional content filters e.g. `user-id=joeblow`.
+Pagination is managed directly through the date/time ranges supplied.
+The server may potentially truncate responses if too much data is requested.
+Clients are expected to request data in chunks by managing ``since`` and ``until`` parameters.
 
 #### Counts
 
-- /api/v1/counts/
 - Provides total counts over the period requested by facility, level and message.
-- When requested for a day counts are returned per hour.
-- When requested for an hour counts are returned per minute.
-- Finer granularity is not available since the API determines only to whole minutes.
-- Pagination is not used for this resource.
-- Filtering can be applied.
+- When requested for durations greater than an hour counts are returned per hour.
+- When requested for durations under an hour counts are returned per minute.
 
 #### Messages
 
-- /api/v1/messages/
-- Provides just the facility, level, date time and message string for all messages received with the period requested.
-- Pagination applies as described.
-- Filtering can be applied.
+- For multiple messages provides the facility, level, date time and message string for all messages logged during the duration.
+- OR For multiple messages provides all recorded data for all messages during the duration.
+- For a single message provides all recorded data for the individual message.
+- Individual messages are uniquely identified by their individual attributes such as date time, facility, and log level. No message ID is used.
 
-#### Full Messages
+#### Ranges
 
-- /api/v1/fullmessages/
-- Provides entire message content for all messages received with the period requested.
-- Pagination applies as described.
-- Filtering can be applied.
-
-#### Types
-
-- /api/v1/types/
 - Provides an exhaustive list of all key values occurring in messages within the period requested.
-- Therefore a list of all levels, all facilities, all error messages, as well as composited key values from the additional records.
-- Pagination is not used for this resource.
-- Filtering is not used for this resource.
-
-### Implementation
-
-See doc strings.
-
-### Testing
-
-- Not implemented yet.
-- Use pytest, but mock too awkward and involved with httpd.
-- Use a test client that checks responses from the server running locally, but problems checking logged output for this too.
-- Unit tests are not supposed to include complex dependencies like servers but this is a simple server run locally so testing will be reliable.
-- This also avoids the problems that can come from mocking where the mock is out of date or fails to replicate fully and causes false positives or negatives itself.
+- This is therefore a list of all levels, all facilities, all error messages, as well as composited key values from the additional records.
 
 ### Problems
 
-- Not clear on the scale: 4 million messages in a 3 hour period, 370 requests per second?
-- Judging by the example graphic there may be up to 500 log events per second.
-- May be an issue with clock skew when trusting timestamps from clients. Alternatively generate a server timestamp only.
+- May be an issue with clock skew when trusting timestamps from clients. Alternatively generate a server timestamp when logs received.
+- Initial tests indicate logging should scale to 500 requests per second although errors within the Python logging module need to be checked.
 
 ### Further ideas
 
 #### Tagging
 
-- Support an API to allow individual users to define tags as a collection of search parameters available.
-- Then support GET API based on those tags.
+- Support an API to allow individual users to define tags as a collection of search parameters.
+- Then support providing those tags to the GET API.
 
 #### Filtering and searching
 
-- Filtering by extra parameters or message content could be provided.
-- When compiling GET response just select lines which match 'user_id=<user_id>'. URL-encoded lines support this with no further work.
+- Filtering on extra parameters or message content can be provided.
+- Full text search should not be complicated.
+- Regular expression searches should also be possible.
 
 #### Message expiry and depreciation.
 
-- Simple with this model to add automated step in the collector to old out unwanted data.
-- It's all stored by day as well so it's easy to select a set of log file names starting with the date and just remove them.
-- DELETE API could support early flushing on demand.
+- Add an automated step in the collector to remove unwanted data at a pre-determined age.
+- A DELETE API could be used to support early flushing on demand.
 
 #### To do
 
-- write get method to return logs
-- write delete method and automate call at appropriate intervals
-- write example js web app to present stats
-- api documentation
-- unit test framework
-- Add SSL support and basic auth. Can read userid/password from a file, if don't want to hard code.
-- Add forking for the server if required to improve performance.
+- GET Messages.
+- GET Ranges.
+- Convert text/plain responses to JSON.
+- Write example js web app to present stats.
+- Add SSL and basic auth. Read userid/password from a file or the environment.
+- More tests.
+- Replace newlines with spaces in content string. Newlines will be damaging if included, just disallow by converting to spaces.
+- Catch remote logging server down exception.
+- Expiry of finished log files and removal from the server at automated intervals.
 - Further commenting and description in README.md and doc strings.
-- Can spawn multiple sub-processes for collector if required to improve performance, allocating individual log files to dedicated process.
-- Using a local cache on the client, with a separate process to send messages to the server would also improve reliability.
-  This would also cover the client for when the logging server goes down.
-- Expiry and deletion of old log files.
+- Manage dedicated processes per log file to make use of more cores and achieve other efficiencies if throughput needs to be increased.
+- Add protection from failure to open log file errors.
+- Forking to handle more requests (if required).
+- Matching name/value pairs in GET requests e.g. userid=xyz.
+- Default to UTC now() if created timestamp is missing.
+- Catch exceptions and report sensibly.
+- Inspect internal operation of logging.handlers.HTTPHandler in case of client side errors that need to be caught.
+- Consider reporting server responses in general in case of error.
+- Strip superfluous empty strings in facilities list generated from trailing slash in URL.
+- Using a local cache on the client, with a separate process to send messages to the server would also improve reliability. This would also cover the client for when the logging server goes down.
 - Additional exception detection in the collector to ensure reliable.
-- Catch server down in logger.
 
