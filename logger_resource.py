@@ -57,6 +57,7 @@ class GetFilter():
         Uses self.since, self.start_time, self.until, self.stop_time,
         self.start_level, self.stop_level, self.facilities.
         """
+        self.counts = { 'all':0 } # Initialise counts.
         message_count = 0 # Count matching lines / messages.
         log_list = os.listdir(log_directory) # List of log file names.
         for log_name in log_list: # Check each log file for inclusion.
@@ -68,14 +69,18 @@ class GetFilter():
             if self.facilities and facility not in self.facilities: continue # Any number of facility names can be included.
             start_time = day == self.since and self.start_time or '' # Start time only applies on the first day in the range.
             stop_time = day == self.until and self.stop_time or '' # End time only applies on the last day in the range.
+            self.counts.setdefault(day, 0) # Initialise breakdown counts.
+            self.counts.setdefault(level, 0)
+            self.counts.setdefault(facility, 0)
             with open(os.path.join(log_directory, log_name), mode='r') as log_file:
                 for log_line in log_file: # Check every line in every selected log file.
                     stamp = log_line.split('.')[0].split('-')[1]
                     if start_time and stamp < start_time: continue
                     if stop_time and stamp > stop_time: continue
-                    message_count += 1 # Count all lines meeting the filter criteria.
-                    # TODO: Count occurrences of different levels, facilities, error messages.
-        self.counts = { 'count_all':message_count } # Set the total message count.
+                    self.counts['all'] += 1 # Count all lines meeting the filter criteria.
+                    self.counts[day] += 1 # Count lines by day, level, facility.
+                    self.counts[level] += 1 # Count lines by day, level, facility.
+                    self.counts[facility] += 1 # Count lines by day, level, facility.
 
 
 if __name__ == '__main__': # Just for testing.

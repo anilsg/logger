@@ -32,7 +32,7 @@ function get_counts() {
         var response = JSON.parse(responseText);
         console.log(responseText);
         document.getElementById('counts').innerHTML =
-        '<div class="count-bar" style="width:'+response.count_all/10+'px;">Message Count : '+response.count_all+'</div>';
+        '<div class="count-bar" style="width:'+response.all/10+'px;">Message Count : '+response.all+'</div>';
     });
 }
 
