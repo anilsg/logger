@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title></title>
+    <title>REST Logger Client</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style type="text/css">
     body, button { font-family: monospace; font-weight: bold; }
     .count-button { background: #00ee00; border: solid black 1px; padding 0.5em; margin: 1em 0em; }
-    .count-bar { background: #ee0000; border: solid black 1px; padding: 0.5em; }
+    .count-bar { background: #ee0000; border: solid black 1px; padding: 0.5em; margin: 0.5em 0em; }
     </style>
 </head>
 <body>
@@ -31,8 +31,16 @@ function get_counts() {
     xget('http://localhost:8080/api/v1/counts', function(responseText) {
         var response = JSON.parse(responseText);
         console.log(responseText);
-        document.getElementById('counts').innerHTML =
-        '<div class="count-bar" style="width:'+response.all/10+'px;">Message Count : '+response.all+'</div>';
+        responseText = ''; // Rebuild the response text for the web page.
+        for (var key in response)
+            if (response.hasOwnProperty(key)) {
+                var colour = 'pink'; // Colour bars based on type of count.
+                if (key.startsWith('facility_')) colour = 'orange'; // Facility name.
+                if (!isNaN(key) && key.length == 8) colour = 'yellow'; // Day message logged.
+                if (!isNaN(key) && key.length == 2) colour = 'red'; // Error level logged.
+                responseText = responseText + '<div class="count-bar" style="background:' + colour + ';width:'+response[key]/3+'px;">"' + key + '" count = '+response[key]+'</div>';
+            }
+        document.getElementById('counts').innerHTML = responseText;
     });
 }
 

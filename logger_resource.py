@@ -70,7 +70,7 @@ class GetFilter():
             start_time = day == self.since and self.start_time or '' # Start time only applies on the first day in the range.
             stop_time = day == self.until and self.stop_time or '' # End time only applies on the last day in the range.
             self.counts.setdefault(day, 0) # Initialise breakdown counts.
-            self.counts.setdefault(level, 0)
+            self.counts.setdefault(level, 0) # Day, level and facility do not vary within each file.
             self.counts.setdefault(facility, 0)
             with open(os.path.join(log_directory, log_name), mode='r') as log_file:
                 for log_line in log_file: # Check every line in every selected log file.
@@ -78,9 +78,9 @@ class GetFilter():
                     if start_time and stamp < start_time: continue
                     if stop_time and stamp > stop_time: continue
                     self.counts['all'] += 1 # Count all lines meeting the filter criteria.
-                    self.counts[day] += 1 # Count lines by day, level, facility.
-                    self.counts[level] += 1 # Count lines by day, level, facility.
-                    self.counts[facility] += 1 # Count lines by day, level, facility.
+                    self.counts[day] += 1 # Count lines by day.
+                    self.counts[level] += 1 # Count lines by level.
+                    self.counts[facility] += 1 # Count lines by facility.
 
 
 if __name__ == '__main__': # Just for testing.
