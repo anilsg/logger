@@ -8,7 +8,6 @@ The remote logging server receives POST messages and drops them as individual fi
 Also responds to GET requests to retrieve logs and potentially other REST requests.
 This process runs separately in addition to logger_collector.py.
 
-TODO: Convert text/plain responses to JSON.
 TODO: Basic auth over SSL. Could use an HMAC of visible parameters and a secret but SSL basic auth sufficient.
 TODO: Forking to handle more requests (if required).
 TODO: Matching name/value pairs in GET requests e.g. userid=xyz.
@@ -16,6 +15,7 @@ TODO: Matching name/value pairs in GET requests e.g. userid=xyz.
 
 import os
 import datetime
+import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
 
@@ -83,14 +83,15 @@ class restHandler(BaseHTTPRequestHandler):
                 return self.send_error(501, 'Response for ranges resource not yet implemented')
             if filtered.resource == 'counts': # Count the number of messages in the provided range.
                 filtered.get_counts() # Count all log lines specified in filter.
-                content = 'message_count=' + str(filtered.message_count) # TODO: Convert to JSON.
+                content = json.dumps(filtered.counts) # Return counts object.
                 self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
+                self.send_header('Content-type', 'application/json')
                 self.send_header('Content-length', str(len(content)))
+                self.send_header('Access-Control-Allow-Origin', '*') # Allow cross requests for everyone.
                 self.end_headers()
                 self.wfile.write(bytes(content, "utf-8"))
                 return
-            return self.send_error(501, 'Unknown resource type')
+            return self.send_error(501, 'Unknown resource type ' + filtered.resource)
         except:
             self.send_error(500)
         return

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+    body, button { font-family: monospace; font-weight: bold; }
+    .count-button { background: #00ee00; border: solid black 1px; padding 0.5em; margin: 1em 0em; }
+    .count-bar { background: #ee0000; border: solid black 1px; padding: 0.5em; }
+    </style>
+</head>
+<body>
+    <button class="count-button" onclick="javascript:get_counts()">Get Counts</button>
+    <div id='counts'></div>
+
+<script type="text/javascript" language="javascript">
+
+function xget(xurl, xcall) {
+    var xreq = new XMLHttpRequest();
+    xreq.onreadystatechange = function() { 
+        if (xreq.readyState == 4 && xreq.status == 200)
+            xcall(xreq.responseText);
+    }
+    xreq.open('GET', xurl, true);
+    xreq.send(null);
+}
+
+function get_counts() {
+    xget('http://localhost:8080/api/v1/counts', function(responseText) {
+        var response = JSON.parse(responseText);
+        console.log(responseText);
+        document.getElementById('counts').innerHTML =
+        '<div class="count-bar" style="width:'+response.count_all/10+'px;">Message Count : '+response.count_all+'</div>';
+    });
+}
+
+</script>
+</body>
+</html>

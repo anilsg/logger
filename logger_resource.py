@@ -74,7 +74,8 @@ class GetFilter():
                     if start_time and stamp < start_time: continue
                     if stop_time and stamp > stop_time: continue
                     message_count += 1 # Count all lines meeting the filter criteria.
-        self.message_count = message_count # Set the total message count.
+                    # TODO: Count occurrences of different levels, facilities, error messages.
+        self.counts = { 'count_all':message_count } # Set the total message count.
 
 
 if __name__ == '__main__': # Just for testing.
