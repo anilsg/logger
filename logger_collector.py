@@ -11,6 +11,9 @@ Take individual message files dropped in /srv/logger/cache/ by logger_httpd.py.
 Move the message files to /srv/logger/pids/YYYYMMDD/pid_number/.
 Add messages to log files /srv/logger/logs/YYYYMMDD-LL-facility_name.
 
+Anil Gulati
+01/09/2018
+
 TODO: Expiry of finished log files and removal from the server at automated intervals.
 TODO: Can manage dedicated processes per log file to make use of more cores and achieve other efficiencies if throughput needs to be increased.
 TODO: Add protection from failure to open log file errors.

@@ -8,6 +8,9 @@ The remote logging server receives POST messages and drops them as individual fi
 Also responds to GET requests to retrieve logs and potentially other REST requests.
 This process runs separately in addition to logger_collector.py.
 
+Anil Gulati
+01/09/2018
+
 TODO: Basic auth over SSL. Could use an HMAC of visible parameters and a secret but SSL basic auth sufficient.
 TODO: Forking to handle more requests (if required).
 TODO: Matching name/value pairs in GET requests e.g. userid=xyz.

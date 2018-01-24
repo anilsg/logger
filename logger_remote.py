@@ -20,6 +20,9 @@ logger_remote.shutdown()
 POST equivalent:
 curl -i -d 'name=facility_name' -d 'levelno=40' -d 'msg=error message' -d 'additional_key=additional_value' http://localhost:8080/api/v1/messages
 
+Anil Gulati
+01/09/2018
+
 TODO: Add SSL and basic auth. Read userid/password from a file or the environment. Could use an HMAC of visible parameters and a secret but more work, SSL sufficient.
 TODO: Inspect internal operation of logging.handlers.HTTPHandler in case of client side errors that need to be caught.
 TODO: Catch remote logging server down exception.

@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+Test logger_resource.py.
+
+Anil Gulati
+01/09/2018
+"""
 
 import logger_resource
 

@@ -6,6 +6,9 @@
 logger_resource.py:
 Read and respond to GET requests.
 Called by logger_httpd.py.
+
+Anil Gulati
+01/09/2018
 """
 
 import os
